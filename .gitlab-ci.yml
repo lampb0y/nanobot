@@ -1,0 +1,18 @@
+include:
+  project: 'yaogen1/common/ci-template'
+  ref: 'develop'
+  file: 'common/.gitlab-ci.yml'
+
+stages:
+  - build-push
+
+build-and-push-image:
+  # The upstream Dockerfile builds both the WebUI and the Python package.
+  needs: []
+  services:
+    - name: docker:dind
+      alias: docker
+      command: ["--tls=false", "--registry-mirror=https://mirror.ccs.tencentyun.com"]
+      variables:
+        DOCKER_TLS_CERTDIR: ""
+        HEALTHCHECK_TCP_PORT: "2375"
