@@ -23,6 +23,7 @@ RUNTIME_CONFIG_PATHS = (
     "agents.defaults.max_concurrent_subagents",
     "agents.defaults.max_tool_result_chars",
     "agents.defaults.provider_retry_mode",
+    "agents.defaults.langfuse_enabled",
     "agents.defaults.tool_hint_max_length",
     "agents.defaults.dream.enabled",
     "gateway.host",
@@ -146,7 +147,7 @@ def update_runtime_config(
     if "tools.exec.sandbox" in values and validated.tools.exec.sandbox not in {"", "bwrap", "seatbelt"}:
         raise WebUISettingsError("tools.exec.sandbox: choose no sandbox, bwrap, or seatbelt")
     if {"tools.exec.sandbox_launcher", "tools.exec.sandbox_rw_binds"} & values.keys() and validated.tools.exec.sandbox_launcher:
-        from nanobot.agent.tools.sandbox_launcher import (
+        from nanobot.security.sandbox_launcher import (
             SandboxLauncherError,
             resolve_sandbox_launcher,
         )

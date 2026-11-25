@@ -557,11 +557,11 @@ class SubagentManager:
 
     def _build_tools(
         self,
-        workspace: Path | None = None,
+        *,
         tools_config: ToolsConfig | None = None,
         exec_manager: ExecSessionManager | None = None,
     ) -> ToolRegistry:
-        root = self.workspace if workspace is None else workspace
+        root = self.workspace
         registry = ToolRegistry()
         cfg = tools_config if tools_config is not None else self._subagent_tools_config()
         ctx = ToolContext(
@@ -884,7 +884,6 @@ class SubagentManager:
                 hook=hook,
                 max_iterations_message="Task stopped at its iteration limit before producing a final response.",
                 finalize_on_max_iterations=False,
-                error_message=None,
                 checkpoint_callback=_on_checkpoint,
                 injection_callback=partial(self._drain_inbox, record),
                 session_key=record.session.key,

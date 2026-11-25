@@ -71,7 +71,8 @@ def test_search_concurrency_without_api_key(
 
 
 @pytest.mark.asyncio
-async def test_brave_search(monkeypatch):
+@pytest.mark.parametrize("count", [1, 1.0])
+async def test_brave_search(monkeypatch, count):
     async def mock_get(self, url, **kw):
         assert "brave" in url
         assert kw["headers"]["X-Subscription-Token"] == "brave-key"
@@ -82,7 +83,7 @@ async def test_brave_search(monkeypatch):
 
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
     tool = _tool(provider="brave", api_key="brave-key", user_agent="nanobot-search-test")
-    result = await tool.execute(query="nanobot", count=1)
+    result = await tool.execute(query="nanobot", count=count)
     assert "NanoBot" in result
     assert "https://example.com" in result
 
@@ -923,24 +924,6 @@ async def test_bocha_search(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_bocha_missing_key_falls_back_to_duckduckgo(monkeypatch):
-    class MockDDGS:
-        def __init__(self, **kw):
-            pass
-
-        def text(self, query, max_results=5):
-            return [{"title": "Fallback", "href": "https://ddg.example", "body": "DuckDuckGo fallback"}]
-
-    monkeypatch.setattr("ddgs.DDGS", MockDDGS)
-    monkeypatch.delenv("BOCHA_API_KEY", raising=False)
-
-    tool = _tool(provider="bocha")
-    result = await tool.execute(query="test")
-
-    assert "DuckDuckGo fallback" in result
-
-
-@pytest.mark.asyncio
 async def test_bocha_rate_limited(monkeypatch):
     async def mock_post(self, url, **kw):
         return _response(status=429, json={"error": "rate limit"})
@@ -988,25 +971,6 @@ async def test_volcengine_search(monkeypatch):
     assert "北京周边游攻略" in result
     assert "https://example.cn/travel" in result
     assert "非常权威" in result
-
-
-@pytest.mark.asyncio
-async def test_volcengine_missing_key_falls_back_to_duckduckgo(monkeypatch):
-    class MockDDGS:
-        def __init__(self, **kw):
-            pass
-
-        def text(self, query, max_results=5):
-            return [{"title": "Fallback", "href": "https://ddg.example", "body": "DuckDuckGo fallback"}]
-
-    monkeypatch.setattr("ddgs.DDGS", MockDDGS)
-    monkeypatch.delenv("VOLCENGINE_SEARCH_API_KEY", raising=False)
-    monkeypatch.delenv("WEB_SEARCH_API_KEY", raising=False)
-
-    tool = _tool(provider="volcengine")
-    result = await tool.execute(query="test")
-
-    assert "DuckDuckGo fallback" in result
 
 
 @pytest.mark.asyncio
@@ -1083,6 +1047,8 @@ async def test_duckduckgo_search_passes_proxy(monkeypatch):
         pytest.param("BRAVE_API_KEY", "brave", id="brave_fallback_to_duckduckgo_when_no_key"),
         pytest.param("KAGI_API_KEY", "kagi", id="kagi_fallback_to_duckduckgo_when_no_key"),
         pytest.param("EXA_API_KEY", "exa", id="exa_fallback_to_duckduckgo_when_no_key"),
+        pytest.param("BOCHA_API_KEY", "bocha", id="bocha_fallback_to_duckduckgo_when_no_key"),
+        pytest.param("VOLCENGINE_SEARCH_API_KEY", "volcengine", id="volcengine_fallback_to_duckduckgo_when_no_key"),
     ],
 )
 async def test_provider_falls_back_to_duckduckgo_without_key(monkeypatch, env_key, provider):
@@ -1095,10 +1061,11 @@ async def test_provider_falls_back_to_duckduckgo_without_key(monkeypatch, env_ke
 
     monkeypatch.setattr("ddgs.DDGS", MockDDGS)
     monkeypatch.delenv(env_key, raising=False)
+    monkeypatch.delenv("WEB_SEARCH_API_KEY", raising=False)
 
     tool = _tool(provider=provider, api_key="")
     result = await tool.execute(query="test")
-    assert "Fallback" in result
+    assert "DuckDuckGo fallback" in result
 
 
 @pytest.mark.asyncio

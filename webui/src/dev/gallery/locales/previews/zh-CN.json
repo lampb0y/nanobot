@@ -1,18 +1,18 @@
 {
+  "goal": {
+    "title": "GoalIsland · 目标",
+    "description": "预览目标及其详情。",
+    "options": "传入目标状态、摘要、内容及可选的进展说明。",
+    "state": "状态",
+    "summary": "准备发布",
+    "objective": "检查变更并验证发布。\n\n- 检查测试\n- 审阅文档\n- 确认发布准备就绪",
+    "recap": "等待批准。"
+  },
   "rename": {
     "title": "RenameDialog · 分组与项目改名",
     "description": "预览分组和项目改名；话题在列表行内改名。",
     "options": "调用方提供 dialogTitle、description 和 placeholder。title 设置初值，onConfirm 接收去除两端空白的标题。空标题无法保存。",
     "hint": "保存后更新上方标题。"
-  },
-  "delete": {
-    "title": "DeleteConfirm · 删除确认",
-    "description": "比较单个、批量和带自动任务的删除确认。",
-    "options": "count 控制批量文案；automations 展示关联任务、计划和下次运行时间。确认按钮调用 onConfirm。",
-    "scenario": "删除场景",
-    "open": "打开删除确认",
-    "confirmed": "已确认删除示例。",
-    "hint": "选择单个、批量或带自动任务的会话。"
   },
   "inlineTokens": {
     "title": "Inline tokens · 命令与会话标识",

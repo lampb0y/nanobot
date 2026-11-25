@@ -21,7 +21,6 @@ from nanobot.session.manager import (
     SessionPolicy,
     fork_session,
 )
-from nanobot.session.model_selection import SESSION_MODEL_PRESET_METADATA_KEY
 from nanobot.session.sqlite_store import SessionConflictError, SqliteSessionStore
 from nanobot.session.types import PARENT_SESSION_KEY, SessionTypes
 from nanobot.utils.cancellation import shield_and_drain
@@ -632,10 +631,13 @@ class SessionState:
         *,
         expected_generation: str | None = None,
         validate_existing: Callable[[Mapping[str, Any]], None] | None = None,
+        on_create: Mapping[str, Any] | None = None,
+        remove: tuple[str, ...] = (),
     ) -> tuple[str, bool]:
         """Open one generation and atomically validate and attach admission metadata."""
         values = deepcopy(dict(updates))
-        if _RESERVED_KEYS.intersection(values):
+        initial = deepcopy(dict(on_create or {}))
+        if _RESERVED_KEYS.intersection((*values, *initial, *remove)):
             raise ValueError("turn state must be changed through turn operations")
 
         def open_session() -> tuple[str, bool]:
@@ -647,7 +649,7 @@ class SessionState:
                         raise SessionConflictError("session does not exist")
                     with self._cache_lock:
                         self._retired.discard(key)
-                    session = Session(key=key)
+                    session = Session(key=key, metadata=initial)
                 elif (
                     expected_generation is not None
                     and session.generation != expected_generation
@@ -655,6 +657,8 @@ class SessionState:
                     raise SessionConflictError("session admission belongs to a replaced session")
                 if not created and validate_existing is not None:
                     validate_existing(session.metadata)
+                for name in remove:
+                    session.metadata.pop(name, None)
                 session.metadata.update(values)
                 header_only = session.policy.persist and session.persisted
                 if header_only:
@@ -873,6 +877,19 @@ class SessionState:
             None, lambda: self._store.set_archived_keys(values), operation_name="set_archived_keys",
         )
 
+    async def typed_session_headers(self, session_type: str) -> list[tuple[str, dict[str, Any]]]:
+        return await self._execute(
+            None, lambda: self._store.typed_session_headers(session_type),
+            operation_name="typed_session_headers", write=False,
+        )
+
+    async def recovery_candidates(self, key_prefix: str) -> list[tuple[str, bool]]:
+        """Take one ordered read snapshot before startup admits new work."""
+        return await self._execute(
+            None, lambda: self._store.recovery_candidates(key_prefix),
+            operation_name="recovery_candidates", write=False,
+        )
+
     async def list_sessions(self) -> list[dict[str, Any]]:
         return await self._execute(
             None,
@@ -911,18 +928,7 @@ class SessionState:
             return 0
 
         def rename() -> int:
-            def write() -> list[str]:
-                changed: list[str] = []
-                for row in self._store.list_metadata():
-                    if row["metadata"].get(SESSION_MODEL_PRESET_METADATA_KEY) == old_name:
-                        if self._store.update_metadata(
-                            row["key"],
-                            {SESSION_MODEL_PRESET_METADATA_KEY: new_name},
-                        ):
-                            changed.append(row["key"])
-                return changed
-
-            changed = self._store.run_write(write)
+            changed = self._store.rename_model_preset(old_name, new_name)
             with self._cache_lock:
                 for key in changed:
                     self._snapshots.pop(key, None)

@@ -10,6 +10,7 @@ import type {
   ChannelConnectPayload,
   ChannelValidationPayload,
   ChatSummary,
+  SessionModelOptions,
   ContextGraph,
   CliAppsPayload,
   FilePreviewPayload,
@@ -204,6 +205,7 @@ export async function listSessions(
     title?: string;
     preview?: string;
     model_preset?: string | null;
+    model_options?: SessionModelOptions;
     run_started_at?: number | null;
     recovery_state?: RecoveryState | null;
     workspace_scope?: WorkspaceScopePayload | null;
@@ -226,6 +228,7 @@ export async function listSessions(
       title: s.title ?? "",
       preview: s.preview ?? "",
       modelPreset: s.model_preset ?? null,
+      modelOptions: s.model_options ?? { reasoning_effort: null, codex_fast_mode: null },
       runStartedAt: s.run_started_at ?? null,
       recoveryState: s.recovery_state ?? null,
       workspaceScope: s.workspace_scope ?? null,
@@ -366,6 +369,7 @@ function parseThreadProjectionEvent(value: unknown, validatedGraphs: ReadonlySet
       return value as unknown as ThreadProjectionEvent;
     case "message":
       if (typeof value.text !== "string") break;
+      if (value.side_channel !== undefined && value.side_channel !== true) break;
       if (value.tool_events !== undefined && !isRecordArray(value.tool_events)) break;
       if (value.trace_detail !== undefined && (
         !["tool_hint", "progress"].includes(String(value.kind))
@@ -1417,7 +1421,7 @@ export async function fetchSidebarState(
 function modelGenerationSettingsPayload(
   configuration: Pick<
     ModelConfigurationCreate,
-    "maxTokens" | "contextWindowTokens" | "temperature" | "reasoningEffort" | "api" | "extraHeaders" | "extraQuery" | "extraBody"
+    "maxTokens" | "contextWindowTokens" | "temperature" | "reasoningEffort" | "codexFastMode" | "supportsImages" | "api" | "extraHeaders" | "extraQuery" | "extraBody"
   >,
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
@@ -1430,8 +1434,14 @@ function modelGenerationSettingsPayload(
   if (configuration.temperature !== undefined) {
     payload.temperature = configuration.temperature;
   }
+  if (configuration.supportsImages !== undefined) {
+    payload.supports_images = configuration.supportsImages;
+  }
   if (configuration.reasoningEffort !== undefined) {
     payload.reasoning_effort = configuration.reasoningEffort ?? "";
+  }
+  if (configuration.codexFastMode !== undefined) {
+    payload.codex_fast_mode = configuration.codexFastMode ?? "";
   }
   if (configuration.api !== undefined) {
     payload.api = configuration.api;
